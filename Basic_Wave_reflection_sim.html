@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Wave Reflection in Dielectric Slab</title>
+  <style>
+    :root {
+      --bg-1: #07111f;
+      --bg-2: #0d1f34;
+      --panel: rgba(10, 19, 33, 0.78);
+      --panel-border: rgba(148, 163, 184, 0.18);
+      --text: #e5eefc;
+      --muted: #9fb2ca;
+      --accent: #57c7ff;
+      --accent-2: #7cdb9a;
+      --slab: rgba(194, 210, 230, 0.22);
+      --grid: rgba(255, 255, 255, 0.08);
+      --glow: rgba(87, 199, 255, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(87, 199, 255, 0.18), transparent 38%),
+        radial-gradient(circle at 80% 20%, rgba(124, 219, 154, 0.15), transparent 30%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      overflow: hidden;
+    }
+
+    .app {
+      width: min(1080px, calc(100vw - 32px));
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.4fr auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3.5vw, 3.2rem);
+      line-height: 1.05;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .stat {
+      padding: 12px 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: rgba(8, 15, 28, 0.55);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      min-width: 130px;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stage {
+      position: relative;
+      padding: 16px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(14, 25, 44, 0.88), rgba(7, 15, 28, 0.84));
+      border: 1px solid var(--panel-border);
+      box-shadow:
+        0 25px 70px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: none;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+        rgba(4, 10, 20, 0.85);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    .swatch.incident {
+      color: #57c7ff;
+      background: #57c7ff;
+    }
+
+    .swatch.slab {
+      color: #cbd5e1;
+      background: #cbd5e1;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        width: min(100vw, calc(100vw - 20px));
+        padding: 14px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Electromagnetic wave optics</p>
+        <h1>Wave Interaction with a Dielectric Slab</h1>
+        <p class="subtitle">A pulsed wave meets a higher-index slab, producing reflection at the first surface, partial
+          transmission into the medium, and repeated internal echoes.</p>
+      </div>
+      <div class="stats" aria-label="Simulation parameters">
+        <div class="stat">
+          <span class="stat-label">Refractive index</span>
+          <span class="stat-value">n = 2.0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Reflection coefficient</span>
+          <span class="stat-value">r = -0.33</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Transmission coefficient</span>
+          <span class="stat-value">t = 0.67</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="canvas-wrap">
+        <canvas id="canvas" width="960" height="360"></canvas>
+      </div>
+      <div class="legend" aria-label="Wave legend">
+        <span class="legend-item"><span class="swatch incident"></span> Incident wave</span>
+        <span class="legend-item"><span class="swatch slab"></span> Dielectric slab</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const slabStart = 360;
+    const slabEnd = 600;
+
+    let t_global = 0;
+    const speed = 2;
+
+    // physics
+    const n = 2;                 // refractive index
+    const r = (1 - n) / (1 + n);
+    const t_coeff = 2 / (1 + n);
+
+    // pulse
+    function pulse(x, center) {
+      return Math.exp(-0.002 * (x - center) * (x - center));
+    }
+
+    function drawRoundedRect(x, y, w, h, radius) {
+      const r = Math.min(radius, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawAnnotations() {
+      const baseline = height * 0.5;
+
+      ctx.save();
+
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= width; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(x, 20);
+        ctx.lineTo(x, height - 26);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(255,255,255,0.68)";
+      ctx.font = "600 12px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      for (let x = 0; x <= width; x += 100) {
+        ctx.fillText(String(x), x, height - 8);
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, baseline);
+      ctx.lineTo(width, baseline);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(slabStart, 0);
+      ctx.lineTo(slabStart, height);
+      ctx.moveTo(slabEnd, 0);
+      ctx.lineTo(slabEnd, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.font = "700 13px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Amplitude", 18, 28);
+
+      ctx.save();
+      ctx.translate(18, baseline - 18);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Electric field E(x)", 0, 0);
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(87, 199, 255, 0.95)";
+      ctx.beginPath();
+      ctx.arc(190, 42, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText("Incident wave", 202, 46);
+
+      ctx.textAlign = "center";
+      ctx.font = "800 15px Segoe UI, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillText("Free space", slabStart * 0.5, 34);
+      ctx.fillText("Dielectric slab n = 2", (slabStart + slabEnd) / 2, 34);
+      ctx.fillText("Free space", slabEnd + (width - slabEnd) * 0.5, 34);
+
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "600 12px Segoe UI, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText("Distance x (px)", width - 18, 28);
+
+      ctx.restore();
+    }
+
+    // store waves
+    let waves = [];
+
+    // initialize incident wave
+    waves.push({
+      pos: 100,
+      dir: +1,
+      amp: 1,
+      region: "left"
+    });
+
+    function updateWaves() {
+
+      let newWaves = [];
+
+      waves.forEach(w => {
+
+        // move wave
+        let v = (w.region === "slab") ? speed / n : speed;
+        w.pos += w.dir * v;
+
+        // --- HIT LEFT BOUNDARY ---
+        if (w.dir === 1 && w.pos >= slabStart && w.region === "left") {
+
+          // reflected
+          newWaves.push({
+            pos: slabStart,
+            dir: -1,
+            amp: w.amp * r,
+            region: "left"
+          });
+
+          // transmitted into slab
+          newWaves.push({
+            pos: slabStart,
+            dir: +1,
+            amp: w.amp * t_coeff,
+            region: "slab"
+          });
+
+          return;
+        }
+
+        // --- HIT RIGHT BOUNDARY ---
+        if (w.dir === 1 && w.pos >= slabEnd && w.region === "slab") {
+
+          // transmitted out
+          newWaves.push({
+            pos: slabEnd,
+            dir: +1,
+            amp: w.amp * t_coeff,
+            region: "right"
+          });
+
+          // reflected inside
+          newWaves.push({
+            pos: slabEnd,
+            dir: -1,
+            amp: w.amp * r,
+            region: "slab"
+          });
+
+          return;
+        }
+
+        // --- HIT LEFT BOUNDARY (inside slab) ---
+        if (w.dir === -1 && w.pos <= slabStart && w.region === "slab") {
+
+          // transmitted out
+          newWaves.push({
+            pos: slabStart,
+            dir: -1,
+            amp: w.amp * t_coeff,
+            region: "left"
+          });
+
+          // reflected inside
+          newWaves.push({
+            pos: slabStart,
+            dir: +1,
+            amp: w.amp * r,
+            region: "slab"
+          });
+
+          return;
+        }
+
+        // keep wave if still valid
+        if (Math.abs(w.amp) > 0.01 && w.pos > 0 && w.pos < width) {
+          newWaves.push(w);
+        }
+
+      });
+
+      waves = newWaves;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // dark glass backdrop
+      const backdrop = ctx.createLinearGradient(0, 0, width, height);
+      backdrop.addColorStop(0, "rgba(7, 17, 31, 1)");
+      backdrop.addColorStop(1, "rgba(12, 26, 45, 1)");
+      ctx.fillStyle = backdrop;
+      ctx.fillRect(0, 0, width, height);
+
+      // slab
+      ctx.fillStyle = "rgba(194, 210, 230, 0.18)";
+      ctx.fillRect(slabStart, 0, slabEnd - slabStart, height);
+
+      const slabGlow = ctx.createLinearGradient(slabStart, 0, slabEnd, 0);
+      slabGlow.addColorStop(0, "rgba(87, 199, 255, 0.02)");
+      slabGlow.addColorStop(0.5, "rgba(255,255,255,0.08)");
+      slabGlow.addColorStop(1, "rgba(124, 219, 154, 0.03)");
+      ctx.fillStyle = slabGlow;
+      ctx.fillRect(slabStart, 0, slabEnd - slabStart, height);
+
+      drawAnnotations();
+
+      ctx.beginPath();
+
+      for (let x = 0; x < width; x++) {
+
+        let E = 0;
+
+        waves.forEach(w => {
+          E += w.amp * pulse(x, w.pos);
+        });
+
+        let y = height / 2 - E * 100;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.shadowColor = "rgba(87, 199, 255, 0.6)";
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = "#57c7ff";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      drawRoundedRect(10, 10, width - 20, height - 20, 18);
+      ctx.stroke();
+
+      updateWaves();
+
+      t_global += speed;
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+  </script>
+</body>
+
+</html>
